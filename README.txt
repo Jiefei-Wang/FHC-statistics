@@ -2,10 +2,21 @@ Title: A novel exact equal local levels higher criticism test
 Paper authors: Jiefei Wang, Jeffrey C. Miecznikowski
 Code author: Jiefei Wang (jwang96@buffalo.edu)
 Software:
-R:
-R version 3.5.0 (2018-04-23)
-Platform: x86_64-w64-mingw32/x64 (64-bit)
-Running under: Windows >= 8 x64 (build 9200)
+R studio:
+platform       x86_64-w64-mingw32          
+arch           x86_64                      
+os             mingw32                     
+system         x86_64, mingw32             
+status                                     
+major          3                           
+minor          5.0                         
+year           2018                        
+month          04                          
+day            23                          
+svn rev        74626                       
+language       R                           
+version.string R version 3.5.0 (2018-04-23)
+nickname       Joy in Playing  
 
 MATLAB:
 9.0.0.341360 (R2016a)
