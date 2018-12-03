@@ -1,6 +1,7 @@
 Title: A novel exact equal local levels higher criticism test
 Paper authors: Jiefei Wang, Jeffrey C. Miecznikowski
 Code author: Jiefei Wang (jwang96@buffalo.edu)
+
 Software:
 R studio:
 platform       x86_64-w64-mingw32          
