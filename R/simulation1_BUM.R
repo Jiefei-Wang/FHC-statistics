@@ -80,7 +80,7 @@ a_list=c(0.25,0.5,0.75,1,1,1)
 #Beta
 b_list=c(1,1,1,1.25,1.5,1.75)
 N_list=c(100,1000)
-simN=10
+simN=10000
 
 mydata=c()
 set.seed(1)
