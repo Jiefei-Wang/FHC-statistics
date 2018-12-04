@@ -72,14 +72,14 @@ clusterExport(cl=cl,"critical_asym")
 clusterExport(cl=cl,"computePower_asymFHC")
 
 
-#The file name
-parm=c("025","05","075","125","150","175")
 #The parameter of the Beta distribution
+parm=c("025","05","075","125","150","175")
 #Alpha
 a_list=c(0.25,0.5,0.75,1,1,1)
 #Beta
 b_list=c(1,1,1,1.25,1.5,1.75)
 N_list=c(100,1000)
+#The MC times
 simN=10000
 
 mydata=c()
