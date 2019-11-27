@@ -36,7 +36,16 @@ BJStat<-function(p, alpha0=1){
   M_minus=1-M_plus
   min(c(M_plus[seq_len(nRegion)],M_minus[seq_len(nRegion)]))
 }
-
+KSStat<-function(p,alpha0=1){
+  n=length(p)
+  sp=sort(p)
+  nRegion=max(floor(alpha0*n),1)
+  
+  ksSeq = 1:n/n
+  ksPlus=sp-(ksSeq-1/n)
+  ksMinus= ksSeq-sp
+  max(c(ksPlus[seq_len(nRegion)],ksMinus[seq_len(nRegion)]))
+}
 
 getC = function(x, a){
   out=(x+(a^2-a*(a^2+4*(1-x)*x)^0.5)/2)/(1+a^2);
@@ -108,7 +117,7 @@ MMinusPvalue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE,autoPrecisio
   res=orderedProb(rep(0,n),m,precBits,progress)
   if(res>1||res<0){
     if(autoPrecision)
-      MPlusPvalue(stat,n,alpha0,precBits*2,progress,autoPrecision)
+      MMinusPvalue(stat,n,alpha0,precBits*2,progress,autoPrecision)
     else
       stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
   }else{
@@ -126,13 +135,37 @@ BJPvalue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE,autoPrecision = 
   res=orderedProb(l,m,precBits,progress)
   if(res>1||res<0){
     if(autoPrecision)
-      MPlusPvalue(stat,n,alpha0,precBits*2,progress,autoPrecision)
+      BJPvalue(stat,n,alpha0,precBits*2,progress,autoPrecision)
     else
       stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
   }else{
     res
   }
 }
+#' @export
+KSPValue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  nRegion=max(floor(alpha0*n),1)
+  l= -stat + 1:n/n
+  m= 1:n/n-1/n + stat
+  
+  l[l<0]=0
+  m[m>1]=1
+  
+  l[nRegion+seq_len(n-nRegion)]=l[nRegion]
+  m[nRegion+seq_len(n-nRegion)]=1
+  res=orderedProb(l,m,precBits,progress)
+  if(res>1||res<0){
+    if(autoPrecision)
+      KSPValue(stat,n,alpha0,precBits*2,progress,autoPrecision)
+    else
+      stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
+  }else{
+    res
+  }
+}
+
+
+
 
 #' @export
 HCCritical<-function(alpha,n,alpha0=1,precBits=1024,searchRange=c(0,100),...){
