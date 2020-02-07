@@ -1,56 +1,104 @@
-#' @export
-HCStat = function(p, alpha0=1){
-  n= length(p)
-  nRegion=max(floor(alpha0*n),1)
-  sp = sort(p)
-  sp[sp==0]=min(0.000001,sp[sp!=0])
-  HC = sqrt(n)*(seq(1,n)/n-sp)/sqrt(sp*(1-sp))
-  out = max(HC[seq_len(nRegion)])
-  return(out)
+## Indivial level function
+HCLevel<-function(index,n,p,sp){
+  sqrt(n)*(seq(1,n)[index]/n-sp[index])/sqrt(sp[index]*(1-sp[index]))
 }
-#' @export
-MPlusStat<-function(p, alpha0=1){
-  n=length(p)
-  nRegion=max(floor(alpha0*n),1)
-  sp=sort(p)
-  sp[sp==0]=min(0.000001,sp[sp!=0])
-  FHCElement=sapply(seq_along(p),function(x)pbeta(sp[x],x,n-x+1))
-  min(FHCElement[seq_len(nRegion)])
+BJPlusLevel<-function(index,n,p,sp){
+  if(length(index)==0)return(numeric(0))
+  sapply(seq_along(p)[index],function(x)pbeta(sp[x],x,n-x+1))
 }
-#' @export
-MMinusStat<-function(p, alpha0=1){
-  n=length(p)
-  nRegion=max(floor(alpha0*n),1)
-  sp=sort(p)
-  sp[sp==0]=min(0.000001,sp[sp!=0])
-  FHCElement=1-sapply(seq_along(p),function(x)pbeta(sp[x],x,n-x+1))
-  min(FHCElement[seq_len(nRegion)])
+BJMinusLevel<-function(index,n,p,sp){
+  if(length(index)==0)return(numeric(0))
+  1-BJPlusLevel(index,n,p,sp)
 }
-#' @export
-BJStat<-function(p, alpha0=1){
-  n=length(p)
-  nRegion=max(floor(alpha0*n),1)
-  sp=sort(p)
-  sp[sp==0]=min(0.000001,sp[sp!=0])
-  M_plus=sapply(seq_along(p),function(x)pbeta(sp[x],x,n-x+1))
-  M_minus=1-M_plus
-  min(c(M_plus[seq_len(nRegion)],M_minus[seq_len(nRegion)]))
+BJLevel<-function(index,n,p,sp){
+  indexU <- index$indexU
+  indexL <- index$indexL
+  c(BJPlusLevel(indexU,n,p,sp),BJMinusLevel(indexL,n,p,sp))
 }
-KSStat<-function(p,alpha0=1){
-  n=length(p)
-  sp=sort(p)
-  nRegion=max(floor(alpha0*n),1)
-  
-  ksSeq = 1:n/n
-  ksPlus=sp-(ksSeq-1/n)
-  ksMinus= ksSeq-sp
-  max(c(ksPlus[seq_len(nRegion)],ksMinus[seq_len(nRegion)]))
+KSPlusLevel<-function(index,n,p,sp){
+  sp[index] - (seq(1,n)[index]-1)/n
+}
+KSMinusLevel<-function(index,n,p,sp){
+  seq(1,n)[index]/n-sp[index]
+}
+KSLevel<-function(index,n,p,sp){
+  c(KSPlusLevel(index,n,p,sp),KSMinusLevel(index,n,p,sp))
 }
 
-getC = function(x, a){
-  out=(x+(a^2-a*(a^2+4*(1-x)*x)^0.5)/2)/(1+a^2);
-  return(out)
+## These functions return a set of level stat
+partialLevelStat <- function(statFunc,p,alpha0,index){
+  if(missing(index)){
+    nRegion <-max(floor(alpha0*length(p)),1)
+    index <- seq(1,nRegion)
+  }
+  n <- length(p)
+  sp <- sort(p)
+  sp[sp==0] <- min(10^-6,sp[sp!=0])
+  sp[sp==1] <- max(1-10^-6,sp[sp!=1])
+  statFunc(index=index ,n = n,p = p,sp =sp)
 }
+
+## Statistics
+#' @export
+HCStat<-function(p,alpha0 = 1, index){
+  stat <- max(partialLevelStat(statFunc = HCLevel,
+                       p = p,
+                       alpha0 = alpha0,
+                       index= index
+                       ))
+  .jointTest("HC",stat,length(p),alpha0,index)
+}
+
+#' @export
+BJStat<-function(p,alpha0 = 1, index,indexL,indexU){
+  index <- getIndex(index,indexL,indexU)
+  stat <- min(partialLevelStat(statFunc = BJLevel,
+                       p = p,
+                       alpha0 = alpha0,
+                       index= index
+  ))
+  .jointTest("BJ",stat,length(p),alpha0,index)
+}
+
+#' @export
+BJPlusStat<-function(p,alpha0 = 1, index){
+  BJStat(p=p,alpha0=alpha0,indexU=index)
+}
+#' @export
+BJMinusStat<-function(p,alpha0 = 1, index){
+  BJStat(p=p,alpha0=alpha0,indexL=index)
+}
+
+#' @export
+KSStat<-function(p,alpha0=1,index){
+  stat <- max(partialLevelStat(statFunc = KSLevel,
+                       p = p,
+                       alpha0 = alpha0,
+                       index= index
+  ))
+  .jointTest("KS",stat,length(p),alpha0,index)
+}
+#' @export
+KSPlusStat <- function(p,alpha0=1,index){
+  stat <- max(partialLevelStat(statFunc = KSPlusLevel,
+                       p = p,
+                       alpha0 = alpha0,
+                       index= index
+  ))
+  .jointTest("KS+",stat,length(p),alpha0,index)
+}
+
+#' @export
+KSMinusStat <- function(p,alpha0=1,index){
+  stat <- max(partialLevelStat(statFunc = KSMinusLevel,
+                       p = p,
+                       alpha0 = alpha0,
+                       index= index
+  ))
+  .jointTest("KS-",stat,length(p),alpha0,index)
+}
+
+
 
 getSCol<-function(l,m,j,precBits){
   i_range=1:j
@@ -60,11 +108,28 @@ getSCol<-function(l,m,j,precBits){
   return(chooseNum*inner)
 }
 
-orderedProb<-function(l,m,precBits=1024,progress=FALSE){
-  n=length(l)
-  #for(i in 1:(n-1)){
-  #  l[l[i]>l[(i+1):n]]=l[i]
-  #}
+orderedProb<-function(l,m,indexL,indexU,precBits,progress,autoPrecision){
+  if(length(indexL)!=0){
+    l[-indexL] <- 0
+  }else{
+    l=rep(0,length(l))
+  }
+  if(length(indexU)!=0){
+    m[-indexU] <- 1
+  }else{
+    m=rep(0,length(m))
+  }
+  n <- length(l)
+  for(i in seq_len(n-1)){
+    if(l[i]>l[i+1]) l[i+1] <- l[i]
+    j <- n-i
+    if(m[j] > m[j+1]) m[j] <- m[j+1]
+  }
+  if(any(l>m))return(0)
+  if(autoPrecision){
+    precBits<- getSuggestedPrecision(n)
+  }
+  
   S_last_col=getSCol(l,m,n,precBits)
   if(length(S_last_col)!=1){
     if(progress) pb <- txtProgressBar(min=0,max=n)
@@ -76,158 +141,169 @@ orderedProb<-function(l,m,precBits=1024,progress=FALSE){
     }
     if(progress) close(pb)
   }
-  mymethod= 1-abs(as.numeric(S_last_col[1]))
-  return(mymethod)
+  mymethod= abs(as.numeric(S_last_col[1]))
+  if(mymethod>1||mymethod<0){
+    if(autoPrecision)
+      return(
+        orderedProb(l,m,indexL,indexU,ceiling(precBits*1.2),progress,autoPrecision))
+    else
+      stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
+  }else{
+    if(autoPrecision){
+      addSuggestedPrecision(n,precBits)
+    }
+    return(mymethod)
+  }
 }
 
-
+getC = function(x, a){
+  out=(x+(a^2-a*(a^2+4*(1-x)*x)^0.5)/2)/(1+a^2);
+  return(out)
+}
 #' @export
-HCPvalue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE){
-  nRegion=max(floor(alpha0*n),1)
+HCPvalue<-function(stat,n,alpha0,index,
+                   precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"HC","pvalue")
+  cachedResult <- getCache(signature)
+  if(!is.null(cachedResult)) return(cachedResult)
+  
+  args <- getArgs(stat,n,alpha0,index)
+  n <- args$n
+  index <- args$index
   c_const=stat/sqrt(n)
   c_nonConst=1:n/n
   l=getC(c_nonConst,c_const)
-  l[nRegion+seq_len(n-nRegion)]=l[nRegion]
-  res=orderedProb(l,rep(1,n),precBits,progress)
-  if(res>1||res<0) 
-    stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
+  m=rep(1,n)
+  res=1-orderedProb(l,m,index,index,precBits,progress,autoPrecision)
+  setCache(signature,res)
   res
 }
 
 #' @export
-MPlusPvalue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  nRegion=max(floor(alpha0*n),1)
+BJPlusPvalue<-function(stat,n,alpha0,index,precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"BJ+","pvalue")
+  cachedResult <- getCache(signature)
+  if(!is.null(cachedResult)) return(cachedResult)
+  
+  args <- getArgs(stat,n,alpha0,index)
+  n <- args$n
+  index <- args$index
+  
   l=sapply(1:n,function(x)qbeta(stat,x,n-x+1))
-  l[nRegion+seq_len(n-nRegion)]=l[nRegion]
-  res=orderedProb(l,rep(1,n),precBits,progress)
-  if(res>1||res<0){
-    if(autoPrecision)
-      MPlusPvalue(stat,n,alpha0,precBits*2,progress,autoPrecision)
-    else
-      stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
-  }else{
-    res
-  }
+  res=1-orderedProb(l,rep(1,n),index,index,precBits,progress,autoPrecision)
+  setCache(signature,res)
+  res
 }
 #' @export
-MMinusPvalue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  nRegion=max(floor(alpha0*n),1)
+BJMinusPvalue<-function(stat,n,alpha0,index,precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"BJ-","pvalue")
+  cachedResult <- getCache(signature)
+  if(!is.null(cachedResult)) return(cachedResult)
+  
+  args <- getArgs(stat,n,alpha0,index)
+  n <- args$n
+  index <- args$index
+  
   m=sapply(1:n,function(x)qbeta(1 - stat,x,n-x+1))
-  m[nRegion+seq_len(n-nRegion)]=1
-  res=orderedProb(rep(0,n),m,precBits,progress)
-  if(res>1||res<0){
-    if(autoPrecision)
-      MMinusPvalue(stat,n,alpha0,precBits*2,progress,autoPrecision)
-    else
-      stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
-  }else{
-    res
-  }
+  res=1-orderedProb(rep(0,n),m,index,index,precBits,progress,autoPrecision)
+  setCache(signature,res)
+  res
 }
 #' @export
-BJPvalue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  nRegion=max(floor(alpha0*n),1)
+BJPvalue<-function(stat,n,alpha0,index,indexL,indexU,precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  
+  if(missing(index)&&missing(indexU)&&missing(indexL)){
+    args <- getArgs(stat,n,alpha0)
+    index <- args$index
+  }else{
+    index <- getIndex(index,indexL,indexU)
+    args <- getArgs(stat,n,alpha0,index)
+  }
+  n <- args$n
+  
+  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"BJ","pvalue")
+  cachedResult <- getCache(signature)
+  if(!is.null(cachedResult)) return(cachedResult)
+  
+  
   l=sapply(1:n,function(x)qbeta(stat,x,n-x+1))
   m=sapply(1:n,function(x)qbeta(1 - stat,x,n-x+1))
   
-  l[nRegion+seq_len(n-nRegion)]=l[nRegion]
-  m[nRegion+seq_len(n-nRegion)]=1
-  res=orderedProb(l,m,precBits,progress)
-  if(res>1||res<0){
-    if(autoPrecision)
-      BJPvalue(stat,n,alpha0,precBits*2,progress,autoPrecision)
-    else
-      stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
-  }else{
-    res
-  }
+  res=1-orderedProb(l,m,index$indexL,index$indexU,precBits,progress,autoPrecision)
+  setCache(signature,res)
+  res
 }
 #' @export
-KSPValue<-function(stat,n,alpha0=1,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  nRegion=max(floor(alpha0*n),1)
-  l= -stat + 1:n/n
-  m= 1:n/n-1/n + stat
+KSPvalue<-function(stat,n,alpha0,index,precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"KS","pvalue")
+  cachedResult <- getCache(signature)
+  if(!is.null(cachedResult)) return(cachedResult)
+  
+  
+  args <- getArgs(stat,n,alpha0,index)
+  n <- args$n
+  index <- args$index
+  
+  l= 1:n/n - stat
+  m= stat + 1:n/n-1/n
   
   l[l<0]=0
   m[m>1]=1
-  
-  l[nRegion+seq_len(n-nRegion)]=l[nRegion]
-  m[nRegion+seq_len(n-nRegion)]=1
-  res=orderedProb(l,m,precBits,progress)
-  if(res>1||res<0){
-    if(autoPrecision)
-      KSPValue(stat,n,alpha0,precBits*2,progress,autoPrecision)
-    else
-      stop("An numeric overflow has been found, please consider to increase the precision. result: ", res)
-  }else{
-    res
-  }
+  res=1-orderedProb(l,m,index,index,precBits,progress,autoPrecision)
+  setCache(signature,res)
+  res
 }
 
 
 
 
 #' @export
-HCCritical<-function(alpha,n,alpha0=1,precBits=1024,searchRange=c(0,100),...){
-  rootFunc=function(stat,...) HCPvalue(stat,n,alpha0=alpha0,precBits=precBits,...)-alpha
+HCCritical<-function(alpha,n,alpha0,index,precBits=1024,
+                     autoPrecision = FALSE,searchRange=c(0,100),...){
+  rootFunc=function(stat,...) 
+    HCPvalue(stat,n,alpha0=alpha0,index=index,
+             precBits=precBits,autoPrecision=autoPrecision,...)-alpha
   res=uniroot(rootFunc,searchRange,extendInt="yes",...)
   res$root
 }
 
 #' @export
-MPlusCritical<-function(alpha,n,alpha0=1,precBits=1024,...){
-  rootFunc=function(stat,...) MPlusPvalue(stat,n,alpha0=alpha0,precBits=precBits,...)-alpha
+BJPlusCritical<-function(alpha,n,alpha0,index,precBits=1024,
+                         autoPrecision = FALSE,...){
+  rootFunc=function(stat,...) 
+    BJPlusPvalue(stat,n,alpha0=alpha0,index=index,
+                 precBits=precBits,autoPrecision=autoPrecision,...)-alpha
   res=uniroot(rootFunc,c(0,1),...)
   res$root
 }
 #' @export
-MMinusCritical<-function(alpha,n,alpha0=1,precBits=1024,...){
-  rootFunc=function(stat,...) MMinusPvalue(stat,n,alpha0=alpha0,precBits=precBits,...)-alpha
+BJMinusCritical<-function(alpha,n,alpha0,index,precBits=1024,
+                          autoPrecision = FALSE,...){
+  rootFunc=function(stat,...) 
+    BJMinusPvalue(stat,n,alpha0=alpha0,index=index,
+                  precBits=precBits,autoPrecision=autoPrecision,...)-alpha
   res=uniroot(rootFunc,c(0,1),...)
   res$root
 }
 #' @export
-BJCritical<-function(alpha,n,alpha0=1,precBits=1024,...){
-  rootFunc=function(stat,...) BJPvalue(stat,n,alpha0=alpha0,precBits=precBits,...)-alpha
-  res=uniroot(rootFunc,c(0,1),...)
+BJCritical<-function(alpha,n,alpha0,index,indexL,indexU,precBits=1024,
+                     autoPrecision = FALSE,...){
+  rootFunc=function(stat,...) 
+    BJPvalue(stat,n,alpha0=alpha0,index=index,indexL = indexL,indexU=indexU,
+             precBits=precBits,autoPrecision=autoPrecision,...)-alpha
+  res=uniroot(rootFunc,c(0,0.5),...)
   res$root
 }
 
-
-computeSMatrix <- function(l,m){
-  n=length(l)
-  s=matrix(0,n,n)
-  for(i in 1:n){
-    for(j in 1:n){
-      if(j-i+1>=0){
-        s[i,j]=choose(j,j-i+1)*
-          (m[i]-l[j])^(j-i+1)
-      }
-    }
-  }
-  s
+#' @export
+KSCritical<-function(alpha,n,alpha0,index,precBits=1024,
+                     autoPrecision = FALSE,...){
+  rootFunc=function(stat,...) 
+    KSPvalue(stat,n,alpha0=alpha0,index=index,
+             precBits=precBits,autoPrecision=autoPrecision,...)-alpha
+  res=uniroot(rootFunc,c(0,1),...)
+  res$root
 }
-
-approxFactorial<-function(n){
-  n*log(n)-n
-}
-
-
-computeLSMatrix <- function(l,m){
-  n=length(l)
-  S=matrix(0,n,n)
-  
-  for(i in 1:n){
-    #message(i)
-    j=i:n
-    tmp=m[i]-l[j]
-    tmp[tmp<=0]=1
-    
-    S[i,j]=lchoose(j,j-i+1)+(j-i+1)*log(tmp)*(tmp!=0)
-  }
-  S
-}
-
 
 
 
