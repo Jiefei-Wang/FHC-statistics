@@ -19,7 +19,7 @@ getSuggestedPrecision <- function(n){
   closedNIndex <- which.min(abs(nList-n)) 
   closedN <- nList[closedNIndex]
   dist <- closedN-n
-  cache$nList[[as.character(nList)]]-dist
+  cache$nList[[as.character(closedN)]]-dist
 }
 
 addSuggestedPrecision<- function(n,prec){
@@ -43,7 +43,7 @@ print.jointTest <- function(x,...){
 
 
 .jointTest<-function(statName,statValue,n,alpha0,index){
-  if(!myMissing(index)){
+  if(!is.null(index)){
     attris <-list(
       stat = statName,
       n=n,
@@ -62,70 +62,76 @@ print.jointTest <- function(x,...){
 }
 
 
-getArgs<-function(stat,n,alpha0,index){
-  if(myMissing(n)){
-    if(!is.null(attr(stat,"n"))) n <- attr(stat,"n")
-    else stop("The sample size `n` is myMissing")
-  }
-  if(myMissing(alpha0)&&myMissing(index)){
-    alpha0 <- attr(stat,"alpha0")
-    index <- attr(stat,"index")
-    if(is.null(alpha0)&&is.null(index)){
-      index <- 1:n
-      alpha0 <-1
-    }else if(is.null(index)){
-      nRegion <- max(floor(alpha0*n),1)
-      index <- seq(1,nRegion)
+getArgs<-function(stat,n,alpha0,index,indexL=NULL,indexU=NULL){
+  if(is.null(n)){
+    if(class(stat)!="jointTest"){
+      stop("The sample size `n` is missing")
     }
-  }else if(myMissing(index)){
-    nRegion <- max(floor(alpha0*n),1)
-    index <- seq(1,nRegion)
+    n <- attr(stat,"n")
   }
-  list(n=n,index=index)
-}
-
-getPValueSigniture <-function(stat,n,alpha0,index,precBits,method,type){
-  sigList <- list()
-  if(myMissing(alpha0)){
-    sigList$index <- index
-  }else{
-    sigList$alpha0 <- alpha0
-  }
-  sigList$n <- n
-  sigList$stat <- unclass(stat)
-  sigList$method <- method
-  sigList$type <- type
-  sigList$precBits <- precBits
-  signature <- digest::digest(sigList)
-}
-
-getIndex<-function(index,indexL,indexU){
-  if(myMissing(index)){
-    if(myMissing(indexU)&&myMissing(indexL)){
-      stop("indexU and indexL must be specified when index is myMissing")
+  level1 <- !is.null(alpha0)||!is.null(index)
+  level2 <- !is.null(indexL)||!is.null(indexU)
+  if(level1||
+     level2){
+    if(level1&&level2){
+      stop("Either alpha0 and index or indexL and indexU must be NULL")
     }else{
-      if(myMissing(indexL)) indexL <- integer(0)
-      if(myMissing(indexU)) indexU <- integer(0)
-      
+    if(level1){
+      if(!is.null(alpha0)&&!is.null(index)){
+        stop("Either alpha0 or index should be NULL")
+      }else{
+        if(!is.null(alpha0)){
+          nRegion <- max(floor(alpha0*n),1)
+          index <- seq(1,nRegion)
+        }
+      }
+    }else{
+      index <- list(indexL= indexL,indexU=indexU)
+    }
+    }
+  }else{
+    if(class(stat)!="jointTest"){
+      alpha0 <- 1
+      index <- seq_len(n)
+    }else{
+      index <- attr(stat,"index")
+      alpha0 <- attr(stat,"alpha0")
+    }
+  }
+  
+  list(n=n,alpha0 = alpha0, index=index)
+}
+
+getPValueSigniture <-function(stat,args,precBits,method,type){
+  if(!is.null(args$alpha0)){
+    args$index <- NULL
+    args$indexL <- NULL
+    args$indexU <- NULL
+  }
+  args$stat <- as.numeric(stat)
+  args$method <- method
+  args$type <- type
+  args$precBits <- precBits
+  signature <- digest::digest(args)
+}
+
+getIndex<-function(n,alpha0, index,indexL,indexU){
+  if(is.null(index)){
+    if(is.null(indexU)&&is.null(indexL)){
+      nRegion <- max(floor(alpha0*n),1)
+      tmp <- seq(1,nRegion)
+      index <- list(indexU = tmp,
+                    indexL= tmp)
+    }else{
       index <- list(indexU = indexU,
                     indexL= indexL)
     }
   }else{
-    if(!myMissing(indexU)||!myMissing(indexL)){
+    if(!is.null(indexU)||!is.null(indexL)){
       stop("indexU and indexL should be empty when index is specified.")
     }
-    index <- list(indexU = index,
-                  indexL= index)
+    index <- list(indexL = index,
+                  indexU= index)
   }
   index
-}
-
-
-myMissing<-function(x){
-  tryCatch({
-    isMissing <- TRUE
-    x
-    isMissing <- FALSE
-  },error =function(e) e,warning = function(w)w)
-  isMissing
 }

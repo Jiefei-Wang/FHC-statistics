@@ -27,7 +27,7 @@ KSLevel<-function(index,n,p,sp){
 
 ## These functions return a set of level stat
 partialLevelStat <- function(statFunc,p,alpha0,index){
-  if(missing(index)){
+  if(is.null(index)){
     nRegion <-max(floor(alpha0*length(p)),1)
     index <- seq(1,nRegion)
   }
@@ -40,7 +40,7 @@ partialLevelStat <- function(statFunc,p,alpha0,index){
 
 ## Statistics
 #' @export
-HCStat<-function(p,alpha0 = 1, index){
+HCStat<-function(p,alpha0 = 1, index=NULL){
   stat <- max(partialLevelStat(statFunc = HCLevel,
                        p = p,
                        alpha0 = alpha0,
@@ -50,8 +50,8 @@ HCStat<-function(p,alpha0 = 1, index){
 }
 
 #' @export
-BJStat<-function(p,alpha0 = 1, index,indexL,indexU){
-  index <- getIndex(index,indexL,indexU)
+BJStat<-function(p,alpha0 = 1, index=NULL,indexL=NULL,indexU=NULL){
+  index <- getIndex(length(p),alpha0, index,indexL,indexU)
   stat <- min(partialLevelStat(statFunc = BJLevel,
                        p = p,
                        alpha0 = alpha0,
@@ -61,16 +61,16 @@ BJStat<-function(p,alpha0 = 1, index,indexL,indexU){
 }
 
 #' @export
-BJPlusStat<-function(p,alpha0 = 1, index){
+BJPlusStat<-function(p,alpha0 = 1, index=NULL){
   BJStat(p=p,alpha0=alpha0,indexU=index)
 }
 #' @export
-BJMinusStat<-function(p,alpha0 = 1, index){
+BJMinusStat<-function(p,alpha0 = 1, index=NULL){
   BJStat(p=p,alpha0=alpha0,indexL=index)
 }
 
 #' @export
-KSStat<-function(p,alpha0=1,index){
+KSStat<-function(p,alpha0=1,index=NULL){
   stat <- max(partialLevelStat(statFunc = KSLevel,
                        p = p,
                        alpha0 = alpha0,
@@ -79,7 +79,7 @@ KSStat<-function(p,alpha0=1,index){
   .jointTest("KS",stat,length(p),alpha0,index)
 }
 #' @export
-KSPlusStat <- function(p,alpha0=1,index){
+KSPlusStat <- function(p,alpha0=1,index=NULL){
   stat <- max(partialLevelStat(statFunc = KSPlusLevel,
                        p = p,
                        alpha0 = alpha0,
@@ -89,7 +89,7 @@ KSPlusStat <- function(p,alpha0=1,index){
 }
 
 #' @export
-KSMinusStat <- function(p,alpha0=1,index){
+KSMinusStat <- function(p,alpha0=1,index=NULL){
   stat <- max(partialLevelStat(statFunc = KSMinusLevel,
                        p = p,
                        alpha0 = alpha0,
@@ -117,7 +117,7 @@ orderedProb<-function(l,m,indexL,indexU,precBits,progress,autoPrecision){
   if(length(indexU)!=0){
     m[-indexU] <- 1
   }else{
-    m=rep(0,length(m))
+    m=rep(1,length(m))
   }
   n <- length(l)
   for(i in seq_len(n-1)){
@@ -161,13 +161,14 @@ getC = function(x, a){
   return(out)
 }
 #' @export
-HCPvalue<-function(stat,n,alpha0,index,
+HCPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,
                    precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"HC","pvalue")
+  args <- getArgs(stat,n,alpha0,index)
+  signature <- getPValueSigniture(stat,args,precBits,"HC","pvalue")
   cachedResult <- getCache(signature)
   if(!is.null(cachedResult)) return(cachedResult)
   
-  args <- getArgs(stat,n,alpha0,index)
+  
   n <- args$n
   index <- args$index
   c_const=stat/sqrt(n)
@@ -180,51 +181,35 @@ HCPvalue<-function(stat,n,alpha0,index,
 }
 
 #' @export
-BJPlusPvalue<-function(stat,n,alpha0,index,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"BJ+","pvalue")
+BJPlusPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,
+                       precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  BJPvalue(stat = stat, n=n, alpha0=alpha0,
+           indexU= index, precBits = precBits,
+           progress = progress, autoPrecision=autoPrecision)
+}
+#' @export
+BJMinusPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,
+                        precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  BJPvalue(stat = stat, n=n, alpha0=alpha0,
+           indexL= index, precBits = precBits,
+           progress = progress, autoPrecision=autoPrecision)
+}
+#' @export
+BJPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,indexL=NULL,indexU=NULL,
+                   precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  args <- getArgs(stat,n,alpha0,index,indexL,indexU)
+  signature <- getPValueSigniture(stat,args,precBits,"BJ","pvalue")
   cachedResult <- getCache(signature)
   if(!is.null(cachedResult)) return(cachedResult)
   
-  args <- getArgs(stat,n,alpha0,index)
   n <- args$n
   index <- args$index
-  
-  l=sapply(1:n,function(x)qbeta(stat,x,n-x+1))
-  res=1-orderedProb(l,rep(1,n),index,index,precBits,progress,autoPrecision)
-  setCache(signature,res)
-  res
-}
-#' @export
-BJMinusPvalue<-function(stat,n,alpha0,index,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"BJ-","pvalue")
-  cachedResult <- getCache(signature)
-  if(!is.null(cachedResult)) return(cachedResult)
-  
-  args <- getArgs(stat,n,alpha0,index)
-  n <- args$n
-  index <- args$index
-  
-  m=sapply(1:n,function(x)qbeta(1 - stat,x,n-x+1))
-  res=1-orderedProb(rep(0,n),m,index,index,precBits,progress,autoPrecision)
-  setCache(signature,res)
-  res
-}
-#' @export
-BJPvalue<-function(stat,n,alpha0,index,indexL,indexU,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  
-  if(missing(index)&&missing(indexU)&&missing(indexL)){
-    args <- getArgs(stat,n,alpha0)
-    index <- args$index
-  }else{
-    index <- getIndex(index,indexL,indexU)
-    args <- getArgs(stat,n,alpha0,index)
+  if(!is.list(index)){
+    tmp <- list()
+    tmp$indexL <- index
+    tmp$indexU <- index
+    index <- tmp
   }
-  n <- args$n
-  
-  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"BJ","pvalue")
-  cachedResult <- getCache(signature)
-  if(!is.null(cachedResult)) return(cachedResult)
-  
   
   l=sapply(1:n,function(x)qbeta(stat,x,n-x+1))
   m=sapply(1:n,function(x)qbeta(1 - stat,x,n-x+1))
@@ -234,13 +219,14 @@ BJPvalue<-function(stat,n,alpha0,index,indexL,indexU,precBits=1024,progress=FALS
   res
 }
 #' @export
-KSPvalue<-function(stat,n,alpha0,index,precBits=1024,progress=FALSE,autoPrecision = TRUE){
-  signature <- getPValueSigniture(stat,n,alpha0,index,precBits,"KS","pvalue")
+KSPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,
+                   precBits=1024,progress=FALSE,autoPrecision = TRUE){
+  args <- getArgs(stat,n,alpha0,index)
+  
+  signature <- getPValueSigniture(stat,args,precBits,"KS","pvalue")
   cachedResult <- getCache(signature)
   if(!is.null(cachedResult)) return(cachedResult)
   
-  
-  args <- getArgs(stat,n,alpha0,index)
   n <- args$n
   index <- args$index
   
@@ -258,7 +244,7 @@ KSPvalue<-function(stat,n,alpha0,index,precBits=1024,progress=FALSE,autoPrecisio
 
 
 #' @export
-HCCritical<-function(alpha,n,alpha0,index,precBits=1024,
+HCCritical<-function(alpha,n=NULL,alpha0=NULL,index=NULL,precBits=1024,
                      autoPrecision = FALSE,searchRange=c(0,100),...){
   rootFunc=function(stat,...) 
     HCPvalue(stat,n,alpha0=alpha0,index=index,
@@ -268,7 +254,7 @@ HCCritical<-function(alpha,n,alpha0,index,precBits=1024,
 }
 
 #' @export
-BJPlusCritical<-function(alpha,n,alpha0,index,precBits=1024,
+BJPlusCritical<-function(alpha,n=NULL,alpha0=NULL,index=NULL,precBits=1024,
                          autoPrecision = FALSE,...){
   rootFunc=function(stat,...) 
     BJPlusPvalue(stat,n,alpha0=alpha0,index=index,
@@ -277,7 +263,7 @@ BJPlusCritical<-function(alpha,n,alpha0,index,precBits=1024,
   res$root
 }
 #' @export
-BJMinusCritical<-function(alpha,n,alpha0,index,precBits=1024,
+BJMinusCritical<-function(alpha,n=NULL,alpha0=NULL,index=NULL,precBits=1024,
                           autoPrecision = FALSE,...){
   rootFunc=function(stat,...) 
     BJMinusPvalue(stat,n,alpha0=alpha0,index=index,
@@ -286,7 +272,8 @@ BJMinusCritical<-function(alpha,n,alpha0,index,precBits=1024,
   res$root
 }
 #' @export
-BJCritical<-function(alpha,n,alpha0,index,indexL,indexU,precBits=1024,
+BJCritical<-function(alpha,n=NULL,alpha0=NULL,index=NULL,
+                     indexL=NULL,indexU=NULL,precBits=1024,
                      autoPrecision = FALSE,...){
   rootFunc=function(stat,...) 
     BJPvalue(stat,n,alpha0=alpha0,index=index,indexL = indexL,indexU=indexU,
@@ -296,7 +283,7 @@ BJCritical<-function(alpha,n,alpha0,index,indexL,indexU,precBits=1024,
 }
 
 #' @export
-KSCritical<-function(alpha,n,alpha0,index,precBits=1024,
+KSCritical<-function(alpha,n=NULL,alpha0=NULL,index=NULL,precBits=1024,
                      autoPrecision = FALSE,...){
   rootFunc=function(stat,...) 
     KSPvalue(stat,n,alpha0=alpha0,index=index,
