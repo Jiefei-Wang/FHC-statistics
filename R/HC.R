@@ -16,10 +16,10 @@ BJLevel<-function(index,n,p,sp){
   c(BJPlusLevel(indexU,n,p,sp),BJMinusLevel(indexL,n,p,sp))
 }
 KSPlusLevel<-function(index,n,p,sp){
-  sp[index] - (seq(1,n)[index]-1)/n
+  seq(1,n)[index]/n-sp[index]
 }
 KSMinusLevel<-function(index,n,p,sp){
-  seq(1,n)[index]/n-sp[index]
+  sp[index] - (seq(1,n)[index]-1)/n
 }
 KSLevel<-function(index,n,p,sp){
   c(KSPlusLevel(index,n,p,sp),KSMinusLevel(index,n,p,sp))
@@ -214,7 +214,7 @@ BJPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,indexL=NULL,indexU=NULL,
   l=sapply(1:n,function(x)qbeta(stat,x,n-x+1))
   m=sapply(1:n,function(x)qbeta(1 - stat,x,n-x+1))
   
-  res=1-orderedProb(l,m,index$indexL,index$indexU,precBits,progress,autoPrecision)
+  res=1-orderedProb(l,m,index$indexU,index$indexL,precBits,progress,autoPrecision)
   setCache(signature,res)
   res
 }
