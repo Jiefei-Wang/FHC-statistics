@@ -13,6 +13,8 @@ p
 ks.test(x,punif)
 ```
 
+The parameter `alpha0` is a tuning parameter controlling the detection range, that is, the range of x that the differences between F(x) and F_hat(x) will be considered.
+
 ## The higher criticism statistic
 ```
 alpha0 <- 1
@@ -22,8 +24,6 @@ stat
 p <- HCPvalue(stat)
 p
 ```
-The parameter `alpha0` is a tuning parameter controlling the detection range, that is, the range of x that the differences between F(x) and F_hat(x) will be considered.
-
 ## Berk-Jone statistic
 ```
 alpha0 <- 1
