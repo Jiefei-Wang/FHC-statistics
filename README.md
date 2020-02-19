@@ -13,7 +13,7 @@ p
 ks.test(x,punif)
 ```
 
-The parameter `alpha0` is a tuning parameter controlling the detection range, that is, the range of x that the differences between F(x) and F_hat(x) will be considered.
+The parameter `alpha0` is a tuning parameter controlling the detection range, that is, the range of `x` that the differences between `F(x)` and `F_hat(x)` will be considered.
 
 ## The higher criticism statistic
 ```
@@ -33,7 +33,7 @@ stat
 p <- BJPvalue(stat)
 p
 ```
-The package also provide functions to compute the one-sided Berk-Jone statistics, namely BJPlusStat and BJMinusStat. 
+The package also provide functions to compute the one-sided Berk-Jone statistics, namely `BJPlusStat` and `BJMinusStat`. 
 
 
 # Advanced usage
