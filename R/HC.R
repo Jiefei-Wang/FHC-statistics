@@ -1,101 +1,101 @@
 ## Indivial level function
-HCLevel<-function(index,n,p,sp){
+HCLevel<-function(index,n,x,sp){
   sqrt(n)*(seq(1,n)[index]/n-sp[index])/sqrt(sp[index]*(1-sp[index]))
 }
-BJPlusLevel<-function(index,n,p,sp){
+BJPlusLevel<-function(index,n,x,sp){
   if(length(index)==0)return(numeric(0))
-  sapply(seq_along(p)[index],function(x)pbeta(sp[x],x,n-x+1))
+  sapply(seq_along(x)[index],function(x)pbeta(sp[x],x,n-x+1))
 }
-BJMinusLevel<-function(index,n,p,sp){
+BJMinusLevel<-function(index,n,x,sp){
   if(length(index)==0)return(numeric(0))
-  1-BJPlusLevel(index,n,p,sp)
+  1-BJPlusLevel(index,n,x,sp)
 }
-BJLevel<-function(index,n,p,sp){
+BJLevel<-function(index,n,x,sp){
   indexU <- index$indexU
   indexL <- index$indexL
-  c(BJPlusLevel(indexU,n,p,sp),BJMinusLevel(indexL,n,p,sp))
+  c(BJPlusLevel(indexU,n,x,sp),BJMinusLevel(indexL,n,x,sp))
 }
-KSPlusLevel<-function(index,n,p,sp){
+KSPlusLevel<-function(index,n,x,sp){
   seq(1,n)[index]/n-sp[index]
 }
-KSMinusLevel<-function(index,n,p,sp){
+KSMinusLevel<-function(index,n,x,sp){
   sp[index] - (seq(1,n)[index]-1)/n
 }
-KSLevel<-function(index,n,p,sp){
-  c(KSPlusLevel(index,n,p,sp),KSMinusLevel(index,n,p,sp))
+KSLevel<-function(index,n,x,sp){
+  c(KSPlusLevel(index,n,x,sp),KSMinusLevel(index,n,x,sp))
 }
 
 ## These functions return a set of level stat
-partialLevelStat <- function(statFunc,p,alpha0,index){
+partialLevelStat <- function(statFunc,x,alpha0,index){
   if(is.null(index)){
-    nRegion <-max(floor(alpha0*length(p)),1)
+    nRegion <-max(floor(alpha0*length(x)),1)
     index <- seq(1,nRegion)
   }
-  n <- length(p)
-  sp <- sort(p)
+  n <- length(x)
+  sp <- sort(x)
   sp[sp==0] <- min(10^-6,sp[sp!=0])
   sp[sp==1] <- max(1-10^-6,sp[sp!=1])
-  statFunc(index=index ,n = n,p = p,sp =sp)
+  statFunc(index=index ,n = n,x = x,sp =sp)
 }
 
 ## Statistics
 #' @export
-HCStat<-function(p,alpha0 = 1, index=NULL){
+HCStat<-function(x,alpha0 = 1, index=NULL){
   stat <- max(partialLevelStat(statFunc = HCLevel,
-                       p = p,
+                       x = x,
                        alpha0 = alpha0,
                        index= index
                        ))
-  .jointTest("HC",stat,length(p),alpha0,index)
+  .jointTest("HC",stat,length(x),alpha0,index)
 }
 
 #' @export
-BJStat<-function(p,alpha0 = 1, index=NULL,indexL=NULL,indexU=NULL){
-  index <- getIndex(length(p),alpha0, index,indexL,indexU)
+BJStat<-function(x,alpha0 = 1, index=NULL,indexL=NULL,indexU=NULL){
+  index <- getIndex(length(x),alpha0, index,indexL,indexU)
   stat <- min(partialLevelStat(statFunc = BJLevel,
-                       p = p,
+                       x = x,
                        alpha0 = alpha0,
                        index= index
   ))
-  .jointTest("BJ",stat,length(p),alpha0,index)
+  .jointTest("BJ",stat,length(x),alpha0,index)
 }
 
 #' @export
-BJPlusStat<-function(p,alpha0 = 1, index=NULL){
-  BJStat(p=p,alpha0=alpha0,indexU=index)
+BJPlusStat<-function(x,alpha0 = 1, index=NULL){
+  BJStat(x=x,alpha0=alpha0,indexU=index)
 }
 #' @export
-BJMinusStat<-function(p,alpha0 = 1, index=NULL){
-  BJStat(p=p,alpha0=alpha0,indexL=index)
+BJMinusStat<-function(x,alpha0 = 1, index=NULL){
+  BJStat(x=x,alpha0=alpha0,indexL=index)
 }
 
 #' @export
-KSStat<-function(p,alpha0=1,index=NULL){
+KSStat<-function(x,alpha0=1,index=NULL){
   stat <- max(partialLevelStat(statFunc = KSLevel,
-                       p = p,
+                       x = x,
                        alpha0 = alpha0,
                        index= index
   ))
-  .jointTest("KS",stat,length(p),alpha0,index)
+  .jointTest("KS",stat,length(x),alpha0,index)
 }
 #' @export
-KSPlusStat <- function(p,alpha0=1,index=NULL){
+KSPlusStat <- function(x,alpha0=1,index=NULL){
   stat <- max(partialLevelStat(statFunc = KSPlusLevel,
-                       p = p,
+                       x = x,
                        alpha0 = alpha0,
                        index= index
   ))
-  .jointTest("KS+",stat,length(p),alpha0,index)
+  .jointTest("KS+",stat,length(x),alpha0,index)
 }
 
 #' @export
-KSMinusStat <- function(p,alpha0=1,index=NULL){
+KSMinusStat <- function(x,alpha0=1,index=NULL){
   stat <- max(partialLevelStat(statFunc = KSMinusLevel,
-                       p = p,
+                       x = x,
                        alpha0 = alpha0,
                        index= index
   ))
-  .jointTest("KS-",stat,length(p),alpha0,index)
+  .jointTest("KS-",stat,length(x),alpha0,index)
 }
 
 
@@ -184,14 +184,14 @@ HCPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,
 BJPlusPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,
                        precBits=1024,progress=FALSE,autoPrecision = TRUE){
   BJPvalue(stat = stat, n=n, alpha0=alpha0,
-           indexU= index, precBits = precBits,
+           indexL= index, precBits = precBits,
            progress = progress, autoPrecision=autoPrecision)
 }
 #' @export
 BJMinusPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,
                         precBits=1024,progress=FALSE,autoPrecision = TRUE){
   BJPvalue(stat = stat, n=n, alpha0=alpha0,
-           indexL= index, precBits = precBits,
+           indexU= index, precBits = precBits,
            progress = progress, autoPrecision=autoPrecision)
 }
 #' @export
@@ -214,7 +214,7 @@ BJPvalue<-function(stat,n=NULL,alpha0=NULL,index=NULL,indexL=NULL,indexU=NULL,
   l=sapply(1:n,function(x)qbeta(stat,x,n-x+1))
   m=sapply(1:n,function(x)qbeta(1 - stat,x,n-x+1))
   
-  res=1-orderedProb(l,m,index$indexU,index$indexL,precBits,progress,autoPrecision)
+  res=1-orderedProb(l,m,index$indexL,index$indexU,precBits,progress,autoPrecision)
   setCache(signature,res)
   res
 }

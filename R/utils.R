@@ -96,6 +96,10 @@ getArgs<-function(stat,n,alpha0,index,indexL=NULL,indexU=NULL){
     }else{
       index <- attr(stat,"index")
       alpha0 <- attr(stat,"alpha0")
+      if(is.null(index)){
+        nRegion <- max(floor(alpha0*n),1)
+        index <- seq(1,nRegion)
+      }
     }
   }
   
